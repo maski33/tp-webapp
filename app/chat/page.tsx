@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 
 export const metadata: Metadata = {
   title: "Chatbot | Agence VoyageTemporel",
-  description: "Discutez avec TempoBot pour organiser votre voyage temporel.",
+  description: "Faites le quiz TempoBot pour obtenir une recommandation personnalisee.",
 }
 
 export default function ChatPage() {
@@ -18,8 +18,9 @@ export default function ChatPage() {
           <Card className="max-w-3xl mx-auto p-8 bg-card border-border text-center space-y-4">
             <h1 className="text-3xl sm:text-4xl font-bold">TempoBot</h1>
             <p className="text-muted-foreground">
-              Utilisez la bulle en bas a droite pour poser vos questions sur les destinations,
-              la securite, les tarifs et la preparation de votre voyage.
+              Utilisez la bulle en bas a droite pour lancer le quiz de recommandation
+              personnalisee (4 questions) et obtenir la destination la plus adaptee a vos
+              preferences.
             </p>
           </Card>
         </div>
