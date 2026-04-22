@@ -33,36 +33,32 @@ Cette webapp présente une agence de voyage temporel fictive et propose une inte
 
 ## 🛠️ Stack Technique
 
-- **Framework** : React / Next.js
+- **Framework** : Next.js (généré via v0.dev et modifié avec Bolt.new)
 - **UI** : Tailwind CSS
-- **Animations** : Framer Motion (ou AOS)
+- **Animations** : Framer Motion
 - **Routing** : Next.js Router
-- **Chatbot mock** : logique frontend simple (pas d’API obligatoire)
-- **Build & Dev** : Bolt.new ou Cursor
+- **Chatbot** : Quiz interactif avec logique de recommandation (frontend)
+- **Build & Dev** : v0.dev + Bolt.new
 - **Déploiement** : Vercel
+
 
 ---
 
 ## 🤖 Outils IA Utilisés
 
 ### 🔧 Génération de code
-- Bolt.new (Claude 3.5 / Mistral Codestral)
-- Cursor / Windsurf (pour itérations)
+- Bolt.new
+- Cursor
 
 ### 🎨 Génération visuelle (si applicable)
-- Midjourney (pour visuels des destinations)
-- Runway / DALL·E (pour le projet initial)
+- v0 (Vercel)
 
 ### 🗂️ Génération UX / UI
 - v0.dev (Vercel) — création de la maquette
 - Framer AI (pour inspirations design)
 
 ### 📚 Aide à la rédaction
-- ChatGPT / Claude pour prompts, documentation, structure readme
-
----
-
-## 📦 Installation (si applicable)
+- ChatGPT prompts, documentation, structure readme
 
 ### 1. Cloner le projet
 ```bash
