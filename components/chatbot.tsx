@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import Link from "next/link"
 import { MessageCircle, X, Send, Bot, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { destinations, getDestinationBySlug } from "@/lib/destinations-data"
 
 interface Message {
   id: string
@@ -13,30 +15,82 @@ interface Message {
   timestamp: Date
 }
 
+type DestinationSlug = "paris-1889" | "cretaceous" | "florence-1504"
+
+interface QuizOption {
+  label: string
+  scores: Record<DestinationSlug, number>
+}
+
+interface QuizQuestion {
+  id: string
+  question: string
+  options: QuizOption[]
+}
+
+const quizQuestions: QuizQuestion[] = [
+  {
+    id: "ambiance",
+    question: "Quelle ambiance vous attire le plus ?",
+    options: [
+      { label: "Elegance urbaine et culture", scores: { "paris-1889": 3, cretaceous: 0, "florence-1504": 1 } },
+      { label: "Aventure sauvage et adrenaline", scores: { "paris-1889": 0, cretaceous: 3, "florence-1504": 1 } },
+      { label: "Art, histoire et patrimoine", scores: { "paris-1889": 1, cretaceous: 0, "florence-1504": 3 } },
+    ],
+  },
+  {
+    id: "intensite",
+    question: "Quel niveau d'intensite recherchez-vous ?",
+    options: [
+      { label: "Plutot detendu", scores: { "paris-1889": 3, cretaceous: 0, "florence-1504": 1 } },
+      { label: "Equilibre entre confort et action", scores: { "paris-1889": 1, cretaceous: 1, "florence-1504": 3 } },
+      { label: "Maximum sensations fortes", scores: { "paris-1889": 0, cretaceous: 3, "florence-1504": 0 } },
+    ],
+  },
+  {
+    id: "duree",
+    question: "Pour combien de jours souhaitez-vous voyager ?",
+    options: [
+      { label: "3 jours", scores: { "paris-1889": 3, cretaceous: 1, "florence-1504": 1 } },
+      { label: "4 jours", scores: { "paris-1889": 1, cretaceous: 0, "florence-1504": 3 } },
+      { label: "5 jours", scores: { "paris-1889": 0, cretaceous: 3, "florence-1504": 1 } },
+    ],
+  },
+  {
+    id: "priorite",
+    question: "Votre priorite principale ?",
+    options: [
+      { label: "Evenements iconiques", scores: { "paris-1889": 3, cretaceous: 1, "florence-1504": 2 } },
+      { label: "Faune et nature prehistorique", scores: { "paris-1889": 0, cretaceous: 3, "florence-1504": 0 } },
+      { label: "Creation artistique et innovation", scores: { "paris-1889": 1, cretaceous: 0, "florence-1504": 3 } },
+    ],
+  },
+]
+
 const initialMessages: Message[] = [
   {
     id: "1",
-    content: "Bonjour ! Je suis TempoBot, votre assistant personnel de voyage temporel. Comment puis-je vous aider à planifier votre voyage à travers l'histoire aujourd'hui ?",
+    content:
+      "Bonjour ! Je suis TempoBot. Je peux vous guider sur les destinations, la securite, les tarifs et aussi vous recommander un voyage ideal grace a un quiz rapide de 4 questions.",
     role: "assistant",
     timestamp: new Date(),
   },
 ]
 
-const quickReplies = [
-  "Quelles destinations sont disponibles ?",
-  "Le voyage temporel est-il sûr ?",
-  "Combien ça coûte ?",
-  "Quelle est la durée des voyages ?",
-]
-
 const responses: Record<string, string> = {
+  startQuiz: "Parfait. Repondez a cette premiere question :",
   destinations:
-    "Nous proposons plus de 500 périodes historiques ! Nos destinations les plus populaires incluent Paris 1889 (inauguration de la Tour Eiffel), l'Ère Crétacé (safari dinosaures) et Florence 1504 (art de la Renaissance). Souhaitez-vous des détails sur une époque spécifique ?",
-  safe: "Absolument ! Avec un taux de sécurité de 99,99%, notre technologie de déplacement quantique est incroyablement fiable. Tous les voyageurs suivent un briefing de sécurité complet et sont accompagnés par des chrononautes experts tout au long de leur voyage.",
-  cost: "Nos expériences commencent à 25 000€ pour un voyage de 3 jours. Les prix varient selon la destination, la durée et le niveau d'immersion historique. Nous proposons également des forfaits premium avec accès exclusif aux événements historiques.",
-  long: "La durée des voyages varie de 1 jour à 2 semaines. Nos forfaits les plus populaires sont des voyages de 3 à 5 jours, qui offrent suffisamment de temps pour une immersion historique profonde tout en minimisant le décalage temporel.",
+    "Nous proposons actuellement trois experiences phares : Paris 1889 pour une escapade elegante et iconique, Ere Cretace pour une aventure intense au milieu des dinosaures, et Florence 1504 pour une immersion artistique en pleine Renaissance.",
+  safe:
+    "Oui. Chaque voyage inclut un briefing complet, un accompagnement par un chrononaute expert et des protocoles de securite adaptes a la periode visitee.",
+  cost:
+    "Les experiences commencent a partir de 25 000 EUR. Le tarif depend surtout de la destination, de la duree et du niveau d'immersion souhaite.",
+  booking:
+    "Vous pouvez reserver depuis la page de reservation. Si vous voulez, je peux aussi vous aider a choisir la meilleure destination via le quiz personnalise.",
+  quiz:
+    "Bien sur. Cliquez sur 'Demarrer le quiz' et je vous poserai 4 questions pour vous recommander la destination la plus adaptee.",
   default:
-    "C'est une excellente question ! Pour des demandes spécifiques, je vous recommande de parler avec l'un de nos coordinateurs temporels. Vous pouvez réserver une consultation via notre formulaire de réservation, ou je peux vous fournir plus d'informations sur nos destinations les plus populaires.",
+    "Je peux vous aider sur les destinations, la securite, les tarifs, la reservation, ou vous proposer un quiz personnalise. Dites-moi ce que vous cherchez.",
 }
 
 export function Chatbot() {
@@ -44,6 +98,15 @@ export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [isQuizStarted, setIsQuizStarted] = useState(false)
+  const [isQuizFinished, setIsQuizFinished] = useState(false)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [scores, setScores] = useState<Record<DestinationSlug, number>>({
+    "paris-1889": 0,
+    cretaceous: 0,
+    "florence-1504": 0,
+  })
+  const [recommendedSlug, setRecommendedSlug] = useState<DestinationSlug | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -54,21 +117,125 @@ export function Chatbot() {
     scrollToBottom()
   }, [messages])
 
-  const getResponse = (message: string): string => {
+  const addAssistantMessage = (content: string) => {
+    const botMessage: Message = {
+      id: (Date.now() + Math.random()).toString(),
+      content,
+      role: "assistant",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, botMessage])
+  }
+
+  const getGuidanceResponse = (message: string) => {
     const lower = message.toLowerCase()
-    if (lower.includes("destination") || lower.includes("où") || lower.includes("aller")) {
+
+    if (
+      lower.includes("quiz") ||
+      lower.includes("recommand") ||
+      lower.includes("conseil") ||
+      lower.includes("choisir")
+    ) {
+      return responses.quiz
+    }
+
+    if (
+      lower.includes("destination") ||
+      lower.includes("ou aller") ||
+      lower.includes("où aller") ||
+      lower.includes("epoque") ||
+      lower.includes("époque")
+    ) {
       return responses.destinations
     }
-    if (lower.includes("sûr") || lower.includes("danger") || lower.includes("risque") || lower.includes("sécurité")) {
+
+    if (
+      lower.includes("sur") ||
+      lower.includes("sûr") ||
+      lower.includes("securite") ||
+      lower.includes("sécurité") ||
+      lower.includes("danger") ||
+      lower.includes("risque")
+    ) {
       return responses.safe
     }
-    if (lower.includes("coût") || lower.includes("prix") || lower.includes("combien") || lower.includes("tarif")) {
+
+    if (
+      lower.includes("prix") ||
+      lower.includes("cout") ||
+      lower.includes("coût") ||
+      lower.includes("tarif") ||
+      lower.includes("combien")
+    ) {
       return responses.cost
     }
-    if (lower.includes("durée") || lower.includes("long") || lower.includes("temps") || lower.includes("jours")) {
-      return responses.long
+
+    if (
+      lower.includes("reservation") ||
+      lower.includes("réservation") ||
+      lower.includes("reserver") ||
+      lower.includes("réserver") ||
+      lower.includes("booking")
+    ) {
+      return responses.booking
     }
+
     return responses.default
+  }
+
+  const startQuiz = async () => {
+    setIsQuizStarted(true)
+    setIsQuizFinished(false)
+    setCurrentQuestionIndex(0)
+    setRecommendedSlug(null)
+    setScores({ "paris-1889": 0, cretaceous: 0, "florence-1504": 0 })
+    setIsTyping(true)
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    setIsTyping(false)
+    addAssistantMessage(`${responses.startQuiz} ${quizQuestions[0].question}`)
+  }
+
+  const finishQuiz = (finalScores: Record<DestinationSlug, number>) => {
+    const recommendation = (Object.entries(finalScores).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      "paris-1889") as DestinationSlug
+    const destination = getDestinationBySlug(recommendation)
+
+    setRecommendedSlug(recommendation)
+    setIsQuizFinished(true)
+
+    if (!destination) return
+    addAssistantMessage(
+      `Votre destination recommandee est ${destination.title} (${destination.era}). Cette experience correspond le mieux a vos preferences.`
+    )
+  }
+
+  const answerQuestion = async (option: QuizOption) => {
+    const updatedScores: Record<DestinationSlug, number> = {
+      "paris-1889": scores["paris-1889"] + option.scores["paris-1889"],
+      cretaceous: scores.cretaceous + option.scores.cretaceous,
+      "florence-1504": scores["florence-1504"] + option.scores["florence-1504"],
+    }
+    setScores(updatedScores)
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: option.label,
+      role: "user",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, userMessage])
+    setIsTyping(true)
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    setIsTyping(false)
+
+    const nextIndex = currentQuestionIndex + 1
+    if (nextIndex >= quizQuestions.length) {
+      finishQuiz(updatedScores)
+      return
+    }
+
+    setCurrentQuestionIndex(nextIndex)
+    addAssistantMessage(quizQuestions[nextIndex].question)
   }
 
   const sendMessage = async (content: string) => {
@@ -85,18 +252,17 @@ export function Chatbot() {
     setInput("")
     setIsTyping(true)
 
-    // Simulate typing delay
-    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1000))
-
-    const botMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      content: getResponse(content),
-      role: "assistant",
-      timestamp: new Date(),
-    }
-
+    await new Promise((resolve) => setTimeout(resolve, 900))
     setIsTyping(false)
-    setMessages((prev) => [...prev, botMessage])
+
+    const response = getGuidanceResponse(content)
+    addAssistantMessage(response)
+  }
+
+  const restartQuiz = () => {
+    setMessages(initialMessages)
+    setInput("")
+    startQuiz()
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -196,18 +362,61 @@ export function Chatbot() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Replies */}
-          {messages.length <= 2 && (
+          {!isQuizStarted && (
             <div className="px-4 pb-2 flex flex-wrap gap-2">
-              {quickReplies.map((reply) => (
+              <button
+                onClick={startQuiz}
+                className="text-xs px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
+                Demarrer le quiz
+              </button>
+              <button
+                onClick={() => addAssistantMessage(responses.destinations)}
+                className="text-xs px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
+                Voir les destinations
+              </button>
+              <button
+                onClick={() => addAssistantMessage(responses.cost)}
+                className="text-xs px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
+                Tarifs
+              </button>
+            </div>
+          )}
+
+          {isQuizStarted && !isQuizFinished && (
+            <div className="px-4 pb-3 space-y-2">
+              {quizQuestions[currentQuestionIndex].options.map((option) => (
                 <button
-                  key={reply}
-                  onClick={() => sendMessage(reply)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                  key={option.label}
+                  onClick={() => answerQuestion(option)}
+                  className="w-full text-left text-xs px-3 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
                 >
-                  {reply}
+                  {option.label}
                 </button>
               ))}
+            </div>
+          )}
+
+          {isQuizFinished && recommendedSlug && (
+            <div className="px-4 pb-3">
+              <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Recommandation personnalisee prete.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" asChild className="bg-primary hover:bg-primary/90">
+                    <Link href={`/destinations/${recommendedSlug}`}>Voir la destination</Link>
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/booking?destination=${recommendedSlug}`}>Reserver</Link>
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={restartQuiz}>
+                    Refaire le quiz
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
